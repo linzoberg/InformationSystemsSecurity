@@ -1,6 +1,19 @@
 import tkinter as tk
-from tkinter import scrolledtext, messagebox
+from tkinter import scrolledtext, messagebox, filedialog
 import secrets
+import os
+import sys
+
+
+def resource_path(relative_path):
+    """Получить абсолютный путь к ресурсу, работает для dev и для PyInstaller"""
+    try:
+        # PyInstaller создает временную папку и хранит путь в _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 
 class RandomnessTestApp:
@@ -9,13 +22,26 @@ class RandomnessTestApp:
         self.root.title("Тестирование псевдослучайных последовательностей")
         self.root.geometry("900x700")
 
+        # Центрируем окно на экране
+        self.center_window()
+
         # Переменные
         self.sequence = ""  # Здесь будет храниться полная последовательность
         self.full_sequence_displayed = False  # Флаг, показываем ли всю последовательность
         self.preview_length = 100  # Количество бит для предпросмотра в начале и в конце
+        self.current_file = None  # Текущий открытый файл
 
         # Создание интерфейса
         self.create_widgets()
+
+    def center_window(self):
+        """Центрирование окна на экране"""
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
 
     def create_widgets(self):
         # Заголовок
@@ -66,6 +92,33 @@ class RandomnessTestApp:
         )
         self.generate_btn.pack(side=tk.LEFT, padx=5)
 
+        # Кнопка загрузки из файла
+        self.load_btn = tk.Button(
+            btn_frame,
+            text="Загрузить из файла",
+            command=self.load_from_file,
+            bg="#2196F3",
+            fg="white",
+            font=("Arial", 10),
+            padx=10,
+            pady=5
+        )
+        self.load_btn.pack(side=tk.LEFT, padx=5)
+
+        # Кнопка сохранения в файл
+        self.save_btn = tk.Button(
+            btn_frame,
+            text="Сохранить в файл",
+            command=self.save_to_file,
+            bg="#FF9800",
+            fg="white",
+            font=("Arial", 10),
+            padx=10,
+            pady=5,
+            state=tk.DISABLED  # Изначально неактивна, пока нет последовательности
+        )
+        self.save_btn.pack(side=tk.LEFT, padx=5)
+
         # Кнопка очистки
         self.clear_btn = tk.Button(
             btn_frame,
@@ -87,6 +140,15 @@ class RandomnessTestApp:
             fg="blue"
         )
         self.info_label.pack(pady=5)
+
+        # Информация о файле
+        self.file_info_label = tk.Label(
+            self.root,
+            text="Файл: не выбран",
+            font=("Arial", 9),
+            fg="gray"
+        )
+        self.file_info_label.pack(pady=2)
 
         # Фрейм для управления отображением
         display_frame = tk.Frame(self.root)
@@ -181,6 +243,7 @@ class RandomnessTestApp:
 
             # Генерация последовательности с использованием secrets (криптографически стойкий)
             self.sequence = ''.join(str(secrets.randbits(1)) for _ in range(length))
+            self.current_file = None  # Сбрасываем информацию о файле
 
             # Отображаем последовательность
             self.update_display()
@@ -195,6 +258,12 @@ class RandomnessTestApp:
                 fg="green"
             )
 
+            # Обновляем информацию о файле
+            self.file_info_label.config(text="Файл: не сохранено", fg="gray")
+
+            # Активируем кнопку сохранения
+            self.save_btn.config(state=tk.NORMAL)
+
             # Обновляем статус
             self.status_label.config(text=f"Последовательность из {length} бит успешно сгенерирована", fg="green")
 
@@ -204,6 +273,119 @@ class RandomnessTestApp:
             messagebox.showerror("Ошибка", f"Произошла ошибка при генерации: {str(e)}")
         finally:
             self.generate_btn.config(state=tk.NORMAL, text="Сгенерировать последовательность")
+
+    def load_from_file(self):
+        """Загрузка последовательности из текстового файла"""
+        try:
+            # Открываем диалог выбора файла
+            filepath = filedialog.askopenfilename(
+                title="Выберите файл с последовательностью",
+                filetypes=[
+                    ("Текстовые файлы", "*.txt"),
+                    ("Все файлы", "*.*")
+                ]
+            )
+
+            if not filepath:  # Пользователь отменил выбор
+                return
+
+            # Читаем файл
+            with open(filepath, 'r', encoding='utf-8') as file:
+                content = file.read().strip()
+
+            # Удаляем все символы, кроме 0 и 1
+            cleaned_content = ''.join(filter(lambda c: c in '01', content))
+
+            if not cleaned_content:
+                messagebox.showerror("Ошибка", "Файл не содержит последовательности из 0 и 1!")
+                return
+
+            # Сохраняем последовательность
+            self.sequence = cleaned_content
+            self.current_file = filepath
+
+            # Отображаем
+            self.update_display()
+
+            # Обновляем информацию
+            zeros_count = self.sequence.count('0')
+            ones_count = self.sequence.count('1')
+            self.info_label.config(
+                text=f"Загружено: {len(self.sequence)} бит, нулей: {zeros_count}, единиц: {ones_count}",
+                fg="green"
+            )
+
+            # Обновляем информацию о файле
+            filename = os.path.basename(filepath)
+            self.file_info_label.config(text=f"Файл: {filename}", fg="green")
+
+            # Активируем кнопку сохранения
+            self.save_btn.config(state=tk.NORMAL)
+
+            # Обновляем статус
+            self.status_label.config(
+                text=f"Последовательность из файла '{filename}' успешно загружена ({len(self.sequence)} бит)",
+                fg="green"
+            )
+
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить файл: {str(e)}")
+            self.status_label.config(text="Ошибка при загрузке файла", fg="red")
+
+    def save_to_file(self):
+        """Сохранение последовательности в текстовый файл"""
+        if not self.sequence:
+            messagebox.showwarning("Предупреждение", "Нет последовательности для сохранения!")
+            return
+
+        try:
+            # Предлагаем сохранить в текущий файл или новый
+            if self.current_file:
+                response = messagebox.askyesnocancel(
+                    "Сохранение",
+                    f"Сохранить в текущий файл?\n{self.current_file}\n\nДа - перезаписать текущий файл\nНет - выбрать новый файл"
+                )
+
+                if response is None:  # Отмена
+                    return
+                elif response:  # Да - сохранить в текущий
+                    filepath = self.current_file
+                else:  # Нет - выбрать новый
+                    filepath = filedialog.asksaveasfilename(
+                        title="Сохранить последовательность",
+                        defaultextension=".txt",
+                        filetypes=[
+                            ("Текстовые файлы", "*.txt"),
+                            ("Все файлы", "*.*")
+                        ]
+                    )
+            else:
+                filepath = filedialog.asksaveasfilename(
+                    title="Сохранить последовательность",
+                    defaultextension=".txt",
+                    filetypes=[
+                        ("Текстовые файлы", "*.txt"),
+                        ("Все файлы", "*.*")
+                    ]
+                )
+
+            if not filepath:  # Пользователь отменил
+                return
+
+            # Сохраняем в файл
+            with open(filepath, 'w', encoding='utf-8') as file:
+                file.write(self.sequence)
+
+            self.current_file = filepath
+            filename = os.path.basename(filepath)
+
+            # Обновляем информацию
+            self.file_info_label.config(text=f"Файл: {filename} (сохранено)", fg="green")
+            self.status_label.config(text=f"Последовательность сохранена в файл: {filename}", fg="green")
+
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось сохранить файл: {str(e)}")
+            self.status_label.config(text="Ошибка при сохранении файла", fg="red")
 
     def update_display(self):
         """Обновление отображения последовательности в зависимости от выбранного режима"""
@@ -245,8 +427,11 @@ class RandomnessTestApp:
     def clear_display(self):
         """Очистка текстового поля и сброс последовательности"""
         self.sequence = ""
+        self.current_file = None
         self.text_area.delete(1.0, tk.END)
         self.info_label.config(text="Последовательность не сгенерирована", fg="blue")
+        self.file_info_label.config(text="Файл: не выбран", fg="gray")
+        self.save_btn.config(state=tk.DISABLED)
         self.status_label.config(text="Очищено", fg="blue")
 
 

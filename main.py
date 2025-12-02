@@ -6,12 +6,13 @@ import secrets
 class RandomnessTestApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Лабораторная работа №1 - Тестирование ПСП")
-        self.root.geometry("800x600")
+        self.root.title("Тестирование псевдослучайных последовательностей")
+        self.root.geometry("900x700")
 
         # Переменные
         self.sequence = ""  # Здесь будет храниться полная последовательность
         self.full_sequence_displayed = False  # Флаг, показываем ли всю последовательность
+        self.preview_length = 100  # Количество бит для предпросмотра в начале и в конце
 
         # Создание интерфейса
         self.create_widgets()
@@ -20,18 +21,10 @@ class RandomnessTestApp:
         # Заголовок
         title_label = tk.Label(
             self.root,
-            text="Лабораторная работа №1: Тестирование псевдослучайных последовательностей",
+            text="Тестирование псевдослучайных последовательностей",
             font=("Arial", 14, "bold")
         )
         title_label.pack(pady=10)
-
-        # Информация об авторе
-        author_label = tk.Label(
-            self.root,
-            text="Выполнил: Гуляев",
-            font=("Arial", 10)
-        )
-        author_label.pack(pady=5)
 
         # Фрейм для ввода длины
         length_frame = tk.Frame(self.root)
@@ -110,7 +103,7 @@ class RandomnessTestApp:
 
         tk.Radiobutton(
             display_frame,
-            text="Предпросмотр (первые/последние 200 бит)",
+            text=f"Предпросмотр (первые/последние {self.preview_length} бит)",
             variable=self.display_mode,
             value="preview",
             command=self.update_display,
@@ -139,8 +132,8 @@ class RandomnessTestApp:
         # Создаем ScrolledText с вертикальной и горизонтальной прокруткой
         self.text_area = scrolledtext.ScrolledText(
             text_frame,
-            width=100,
-            height=20,
+            width=110,
+            height=25,
             wrap=tk.NONE,  # Не переносить строки
             font=("Courier", 9)  # Моноширинный шрифт для битов
         )
@@ -192,9 +185,13 @@ class RandomnessTestApp:
             # Отображаем последовательность
             self.update_display()
 
-            # Обновляем информацию
+            # Подсчитываем количество нулей и единиц
+            zeros_count = self.sequence.count('0')
+            ones_count = self.sequence.count('1')
+
+            # Обновляем информацию в новом формате
             self.info_label.config(
-                text=f"Сгенерировано: {length} бит | 0: {self.sequence.count('0')} | 1: {self.sequence.count('1')}",
+                text=f"Сгенерировано: {length} бит, нулей: {zeros_count}, единиц: {ones_count}",
                 fg="green"
             )
 
@@ -218,9 +215,14 @@ class RandomnessTestApp:
 
         if mode == "preview":
             # Показываем только начало и конец для длинных последовательностей
-            if len(self.sequence) > 400:
-                preview = self.sequence[:200] + "\n... [пропущено " + str(
-                    len(self.sequence) - 400) + " бит] ...\n" + self.sequence[-200:]
+            if len(self.sequence) > (2 * self.preview_length):
+                preview = (
+                        self.sequence[:self.preview_length] +
+                        "\n... [пропущено " +
+                        str(len(self.sequence) - 2 * self.preview_length) +
+                        " бит] ...\n" +
+                        self.sequence[-self.preview_length:]
+                )
                 self.full_sequence_displayed = False
             else:
                 preview = self.sequence
@@ -235,7 +237,10 @@ class RandomnessTestApp:
 
         # Добавляем информацию о длине
         if not self.full_sequence_displayed:
-            self.text_area.insert(tk.END, f"\n\n[Отображено 400 из {len(self.sequence)} бит]")
+            self.text_area.insert(
+                tk.END,
+                f"\n\n[Отображено {2 * self.preview_length} из {len(self.sequence)} бит]"
+            )
 
     def clear_display(self):
         """Очистка текстового поля и сброс последовательности"""

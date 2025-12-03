@@ -1,27 +1,7 @@
-"""
-Модуль для тестирования псевдослучайных последовательностей
-Реализует тесты из набора NIST
-"""
-
 import math
 
-
+# Частотный тест
 def frequency_test(bit_sequence: str) -> dict:
-    """
-    Частотный тест (Frequency Test)
-    Проверяет пропорцию нулей и единиц в последовательности
-
-    Параметры:
-        bit_sequence (str): строка из 0 и 1
-
-    Возвращает:
-        dict: словарь с результатами теста:
-            - 'passed': bool (True/False)
-            - 'statistic': float (значение статистики S)
-            - 'threshold': float (пороговое значение)
-            - 'description': str (описание результата)
-    """
-
     # Проверка входных данных
     if not bit_sequence:
         return {
@@ -40,7 +20,6 @@ def frequency_test(bit_sequence: str) -> dict:
                 'threshold': 1.82138636,
                 'description': f'Ошибка: некорректный символ "{bit}"'
             }
-
     n = len(bit_sequence)
 
     # 1. Преобразование 0/1 в -1/1
@@ -81,24 +60,8 @@ def frequency_test(bit_sequence: str) -> dict:
         'description': description
     }
 
-
+# Тест на последовательность одинаковых бит
 def runs_test(bit_sequence: str) -> dict:
-    """
-    Тест на последовательность одинаковых бит (Runs Test)
-    Проверяет, является ли количество цепочек (блоков) одинаковых бит в последовательности
-    приблизительно таким, как в истинно случайной последовательности.
-
-    Параметры:
-        bit_sequence (str): строка из 0 и 1
-
-    Возвращает:
-        dict: словарь с результатами теста:
-            - 'passed': bool (True/False)
-            - 'statistic': float (значение статистики S)
-            - 'threshold': float (пороговое значение)
-            - 'description': str (описание результата)
-    """
-
     # Проверка входных данных
     if not bit_sequence:
         return {
@@ -117,7 +80,6 @@ def runs_test(bit_sequence: str) -> dict:
                 'threshold': 1.82138636,
                 'description': f'Ошибка: некорректный символ "{bit}"'
             }
-
     n = len(bit_sequence)
 
     # 1. Вычисляем частоту единиц

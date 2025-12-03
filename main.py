@@ -3,40 +3,35 @@ from tkinter import scrolledtext, messagebox, filedialog
 import secrets
 import os
 import sys
-import tests  # Импорт нашего модуля тестов
+import tests
 
-
+# Получение абсолютного пути к ресурсу для PyInstaller
 def resource_path(relative_path):
-    """Получить абсолютный путь к ресурсу, работает для dev и для PyInstaller"""
     try:
         # PyInstaller создает временную папку и хранит путь в _MEIPASS
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
-
     return os.path.join(base_path, relative_path)
-
 
 class GenerateApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Тестирование псевдослучайных последовательностей")
         self.root.geometry("900x800")
-
         # Центрируем окно на экране
         self.center_window()
-
         # Переменные
         self.sequence = ""  # Здесь будет храниться полная последовательность
         self.full_sequence_displayed = False  # Флаг, показываем ли всю последовательность
         self.preview_length = 100  # Количество бит для предпросмотра в начале и в конце
         self.current_file = None  # Текущий открытый файл
-
         # Создание интерфейса
         self.create_widgets()
 
+    # Центрирование окна на экране
     def center_window(self):
-        """Центрирование окна на экране"""
+
         self.root.update_idletasks()
         width = self.root.winfo_width()
         height = self.root.winfo_height()
@@ -56,13 +51,11 @@ class GenerateApp:
         # Фрейм для ввода длины
         length_frame = tk.Frame(self.root)
         length_frame.pack(pady=10)
-
         tk.Label(
             length_frame,
             text="Длина последовательности (бит):",
             font=("Arial", 10)
         ).pack(side=tk.LEFT, padx=5)
-
         self.length_entry = tk.Entry(length_frame, width=15, font=("Arial", 10))
         self.length_entry.pack(side=tk.LEFT, padx=5)
         self.length_entry.insert(0, "10000")  # значение по умолчанию
@@ -185,7 +178,6 @@ class GenerateApp:
         # Текстовое поле для последовательности с прокруткой
         text_frame = tk.Frame(self.root)
         text_frame.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
-
         tk.Label(
             text_frame,
             text="Последовательность бит:",
@@ -196,7 +188,7 @@ class GenerateApp:
         self.text_area = scrolledtext.ScrolledText(
             text_frame,
             width=110,
-            height=10, # Было 20, уменьшили вдвое
+            height=10,
             wrap=tk.NONE,  # Не переносить строки
             font=("Courier", 9)  # Моноширинный шрифт для битов
         )
@@ -290,17 +282,15 @@ class GenerateApp:
         self.results_text.tag_config("passed", foreground="green", font=("Courier", 9, "bold"))
         self.results_text.tag_config("failed", foreground="red", font=("Courier", 9, "bold"))
 
+    # Генерация псевдослучайной последовательности 0 и 1
     def generate_sequence(self):
-        """Генерация псевдослучайной последовательности 0 и 1"""
         try:
             # Получаем длину из поля ввода
             length = int(self.length_entry.get())
-
             # Проверяем корректность длины
             if length <= 0:
                 messagebox.showerror("Ошибка", "Длина должна быть положительным числом!")
                 return
-
             if length > 1000000:
                 response = messagebox.askyesno(
                     "Предупреждение",
@@ -308,7 +298,6 @@ class GenerateApp:
                 )
                 if not response:
                     return
-
             # Обновляем статус
             self.status_label.config(text="Генерация последовательности...", fg="orange")
             self.generate_btn.config(state=tk.DISABLED, text="Генерация...")
@@ -350,8 +339,8 @@ class GenerateApp:
         finally:
             self.generate_btn.config(state=tk.NORMAL, text="Сгенерировать последовательность")
 
+    # Загрузка последовательности из текстового файла
     def load_from_file(self):
-        """Загрузка последовательности из текстового файла"""
         try:
             # Открываем диалог выбора файла
             filepath = filedialog.askopenfilename(
@@ -371,7 +360,6 @@ class GenerateApp:
 
             # Удаляем все символы, кроме 0 и 1
             cleaned_content = ''.join(filter(lambda c: c in '01', content))
-
             if not cleaned_content:
                 messagebox.showerror("Ошибка", "Файл не содержит последовательности из 0 и 1!")
                 return
@@ -379,7 +367,6 @@ class GenerateApp:
             # Сохраняем последовательность
             self.sequence = cleaned_content
             self.current_file = filepath
-
             # Отображаем
             self.update_display()
 
@@ -411,8 +398,8 @@ class GenerateApp:
             messagebox.showerror("Ошибка", f"Не удалось загрузить файл: {str(e)}")
             self.status_label.config(text="Ошибка при загрузке файла", fg="red")
 
+    # Сохранение последовательности в текстовый файл
     def save_to_file(self):
-        """Сохранение последовательности в текстовый файл"""
         if not self.sequence:
             messagebox.showwarning("Предупреждение", "Нет последовательности для сохранения!")
             return
@@ -466,8 +453,8 @@ class GenerateApp:
             messagebox.showerror("Ошибка", f"Не удалось сохранить файл: {str(e)}")
             self.status_label.config(text="Ошибка при сохранении файла", fg="red")
 
+    # Обновление отображения последовательности в зависимости от выбранного режима
     def update_display(self):
-        """Обновление отображения последовательности в зависимости от выбранного режима"""
         if not self.sequence:
             self.text_area.delete(1.0, tk.END)
             return
@@ -503,8 +490,8 @@ class GenerateApp:
                 f"\n\n[Отображено {2 * self.preview_length} из {len(self.sequence)} бит]"
             )
 
+    # Очистка текстового поля и сброс последовательности
     def clear_display(self):
-        """Очистка текстового поля и сброс последовательности"""
         self.sequence = ""
         self.current_file = None
         self.text_area.delete(1.0, tk.END)
@@ -520,14 +507,14 @@ class GenerateApp:
 
         self.status_label.config(text="Очищено", fg="blue")
 
+    # Активация/деактивация кнопок тестов
     def enable_test_buttons(self, enable=True):
-        """Активация/деактивация кнопок тестов"""
         state = tk.NORMAL if enable else tk.DISABLED
         self.freq_test_btn.config(state=state)
         self.runs_test_btn.config(state=state)  # Добавили управление новой кнопкой
 
+    # Выполнение частотного теста
     def run_frequency_test(self):
-        """Выполнение частотного теста"""
         if not self.sequence:
             messagebox.showwarning("Предупреждение", "Нет последовательности для тестирования!")
             return
@@ -552,12 +539,11 @@ class GenerateApp:
             messagebox.showerror("Ошибка", f"Ошибка при выполнении теста: {str(e)}")
             self.status_label.config(text="Ошибка при выполнении теста", fg="red")
 
+    # Выполнение теста на последовательность одинаковых бит
     def run_runs_test(self):
-        """Выполнение теста на последовательность одинаковых бит"""
         if not self.sequence:
             messagebox.showwarning("Предупреждение", "Нет последовательности для тестирования!")
             return
-
         try:
             # Обновляем статус
             self.status_label.config(text="Выполняется тест на последовательность одинаковых бит...", fg="orange")
@@ -579,8 +565,8 @@ class GenerateApp:
             messagebox.showerror("Ошибка", f"Ошибка при выполнении теста: {str(e)}")
             self.status_label.config(text="Ошибка при выполнении теста", fg="red")
 
+    # Отображение результатов теста в текстовом поле
     def display_test_result(self, result, test_name):
-        """Отображение результатов теста в текстовом поле"""
         self.results_text.config(state=tk.NORMAL)
 
         # Добавляем разделитель и заголовок с результатом
@@ -607,8 +593,8 @@ class GenerateApp:
         self.results_text.see(tk.END)
         self.results_text.config(state=tk.DISABLED)
 
+    # Очистка результатов тестов
     def clear_test_results(self):
-        """Очистка результатов тестов"""
         self.results_text.config(state=tk.NORMAL)
         self.results_text.delete(1.0, tk.END)
         self.results_text.config(state=tk.DISABLED)

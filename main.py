@@ -3,6 +3,8 @@ from tkinter import scrolledtext, messagebox, filedialog
 import secrets
 import os
 import sys
+import datetime as dt
+import tests  # Импорт нашего модуля тестов
 
 
 def resource_path(relative_path):
@@ -16,7 +18,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-class RandomnessTestApp:
+class GenerateApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Тестирование псевдослучайных последовательностей")
@@ -195,7 +197,7 @@ class RandomnessTestApp:
         self.text_area = scrolledtext.ScrolledText(
             text_frame,
             width=110,
-            height=25,
+            height=20,
             wrap=tk.NONE,  # Не переносить строки
             font=("Courier", 9)  # Моноширинный шрифт для битов
         )
@@ -205,6 +207,74 @@ class RandomnessTestApp:
         text_scroll_x = tk.Scrollbar(text_frame, orient=tk.HORIZONTAL, command=self.text_area.xview)
         text_scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
         self.text_area.config(xscrollcommand=text_scroll_x.set)
+
+        # Фрейм для кнопок тестирования
+        test_frame = tk.Frame(self.root)
+        test_frame.pack(pady=10)
+
+        # Кнопка частотного теста
+        self.freq_test_btn = tk.Button(
+            test_frame,
+            text="Частотный тест",
+            command=self.run_frequency_test,
+            bg="#9C27B0",  # Фиолетовый цвет
+            fg="white",
+            font=("Arial", 10, "bold"),
+            padx=10,
+            pady=5,
+            state=tk.DISABLED  # Изначально неактивна
+        )
+        self.freq_test_btn.pack(side=tk.LEFT, padx=5)
+
+        # Кнопка всех тестов (для будущего)
+        self.all_tests_btn = tk.Button(
+            test_frame,
+            text="Все тесты",
+            command=self.run_all_tests,
+            bg="#673AB7",  # Темно-фиолетовый
+            fg="white",
+            font=("Arial", 10),
+            padx=10,
+            pady=5,
+            state=tk.DISABLED
+        )
+        self.all_tests_btn.pack(side=tk.LEFT, padx=5)
+
+        # Кнопка очистки результатов тестов
+        self.clear_tests_btn = tk.Button(
+            test_frame,
+            text="Очистить результаты",
+            command=self.clear_test_results,
+            bg="#795548",  # Коричневый
+            fg="white",
+            font=("Arial", 10),
+            padx=10,
+            pady=5
+        )
+        self.clear_tests_btn.pack(side=tk.LEFT, padx=5)
+
+        # Фрейм для отображения результатов тестов
+        results_frame = tk.Frame(self.root)
+        results_frame.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+
+        tk.Label(
+            results_frame,
+            text="Результаты тестирования:",
+            font=("Arial", 10, "bold")
+        ).pack(anchor=tk.W)
+
+        # Текстовое поле для результатов тестов с прокруткой
+        self.results_text = scrolledtext.ScrolledText(
+            results_frame,
+            width=110,
+            height=10,
+            wrap=tk.WORD,
+            font=("Courier", 9),
+            state=tk.NORMAL
+        )
+        self.results_text.pack(fill=tk.BOTH, expand=True)
+        self.results_text.insert(1.0, "Здесь будут отображаться результаты тестов...\n")
+        self.results_text.config(state=tk.DISABLED)  # Только для чтения
 
         # Статусная строка
         self.status_label = tk.Label(
@@ -216,6 +286,10 @@ class RandomnessTestApp:
             font=("Arial", 9)
         )
         self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Добавляем теги для цветового форматирования результатов тестов
+        self.results_text.tag_config("passed", foreground="green", font=("Courier", 9, "bold"))
+        self.results_text.tag_config("failed", foreground="red", font=("Courier", 9, "bold"))
 
     def generate_sequence(self):
         """Генерация псевдослучайной последовательности 0 и 1"""
@@ -263,6 +337,9 @@ class RandomnessTestApp:
 
             # Активируем кнопку сохранения
             self.save_btn.config(state=tk.NORMAL)
+
+            # Активируем кнопки тестов
+            self.enable_test_buttons()
 
             # Обновляем статус
             self.status_label.config(text=f"Последовательность из {length} бит успешно сгенерирована", fg="green")
@@ -321,6 +398,9 @@ class RandomnessTestApp:
 
             # Активируем кнопку сохранения
             self.save_btn.config(state=tk.NORMAL)
+
+            # Активируем кнопки тестов
+            self.enable_test_buttons()
 
             # Обновляем статус
             self.status_label.config(
@@ -432,12 +512,88 @@ class RandomnessTestApp:
         self.info_label.config(text="Последовательность не сгенерирована", fg="blue")
         self.file_info_label.config(text="Файл: не выбран", fg="gray")
         self.save_btn.config(state=tk.DISABLED)
+
+        # Деактивируем кнопки тестов
+        self.enable_test_buttons(False)
+
+        # Очищаем результаты тестов
+        self.clear_test_results()
+
         self.status_label.config(text="Очищено", fg="blue")
+
+    def enable_test_buttons(self, enable=True):
+        """Активация/деактивация кнопок тестов"""
+        state = tk.NORMAL if enable else tk.DISABLED
+        self.freq_test_btn.config(state=state)
+        self.all_tests_btn.config(state=state)
+
+    def run_frequency_test(self):
+        """Выполнение частотного теста"""
+        if not self.sequence:
+            messagebox.showwarning("Предупреждение", "Нет последовательности для тестирования!")
+            return
+
+        try:
+            # Обновляем статус
+            self.status_label.config(text="Выполняется частотный тест...", fg="orange")
+            self.root.update()
+
+            # Выполняем тест
+            result = tests.frequency_test(self.sequence)
+
+            # Отображаем результаты
+            self.display_test_result(result, "Частотный тест")
+
+            # Обновляем статус
+            status_color = "green" if result['passed'] else "red"
+            status_text = "Частотный тест пройден" if result['passed'] else "Частотный тест не пройден"
+            self.status_label.config(text=status_text, fg=status_color)
+
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка при выполнении теста: {str(e)}")
+            self.status_label.config(text="Ошибка при выполнении теста", fg="red")
+
+    def display_test_result(self, result, test_name):
+        """Отображение результатов теста в текстовом поле"""
+        self.results_text.config(state=tk.NORMAL)
+
+        # Добавляем разделитель и заголовок
+        separator = "=" * 80
+        timestamp = dt.datetime.now().strftime("%H:%M:%S")
+        header = f"\n{separator}\n{test_name} - {timestamp}\n{separator}\n"
+
+        self.results_text.insert(tk.END, header)
+
+        # Добавляем результаты
+        self.results_text.insert(tk.END, result['description'] + "\n")
+
+        # Добавляем цветовое выделение
+        if result['passed']:
+            self.results_text.insert(tk.END, "✓ Тест ПРОЙДЕН успешно\n", "passed")
+        else:
+            self.results_text.insert(tk.END, "✗ Тест НЕ ПРОЙДЕН\n", "failed")
+
+        # Прокручиваем вниз
+        self.results_text.see(tk.END)
+        self.results_text.config(state=tk.DISABLED)
+
+    def run_all_tests(self):
+        """Выполнение всех тестов (пока только частотный)"""
+        self.run_frequency_test()
+        # Здесь будут добавляться другие тесты
+
+    def clear_test_results(self):
+        """Очистка результатов тестов"""
+        self.results_text.config(state=tk.NORMAL)
+        self.results_text.delete(1.0, tk.END)
+        self.results_text.insert(1.0, "Здесь будут отображаться результаты тестов...\n")
+        self.results_text.config(state=tk.DISABLED)
+        self.status_label.config(text="Результаты тестов очищены", fg="blue")
 
 
 def main():
     root = tk.Tk()
-    app = RandomnessTestApp(root)
+    app = GenerateApp(root)
     root.mainloop()
 
 

@@ -3,7 +3,6 @@ from tkinter import scrolledtext, messagebox, filedialog
 import secrets
 import os
 import sys
-import datetime as dt
 import tests  # Импорт нашего модуля тестов
 
 
@@ -22,7 +21,7 @@ class GenerateApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Тестирование псевдослучайных последовательностей")
-        self.root.geometry("900x700")
+        self.root.geometry("900x800")
 
         # Центрируем окно на экране
         self.center_window()
@@ -197,7 +196,7 @@ class GenerateApp:
         self.text_area = scrolledtext.ScrolledText(
             text_frame,
             width=110,
-            height=20,
+            height=10, # Было 20, уменьшили вдвое
             wrap=tk.NONE,  # Не переносить строки
             font=("Courier", 9)  # Моноширинный шрифт для битов
         )
@@ -226,19 +225,19 @@ class GenerateApp:
         )
         self.freq_test_btn.pack(side=tk.LEFT, padx=5)
 
-        # Кнопка всех тестов (для будущего)
-        self.all_tests_btn = tk.Button(
+        # Кнопка теста на последовательность одинаковых бит
+        self.runs_test_btn = tk.Button(
             test_frame,
-            text="Все тесты",
-            command=self.run_all_tests,
-            bg="#673AB7",  # Темно-фиолетовый
+            text="Тест на последовательность одинаковых бит",
+            command=self.run_runs_test,
+            bg="#3F51B5",  # Синий цвет
             fg="white",
             font=("Arial", 10),
             padx=10,
             pady=5,
-            state=tk.DISABLED
+            state=tk.DISABLED  # Изначально неактивна
         )
-        self.all_tests_btn.pack(side=tk.LEFT, padx=5)
+        self.runs_test_btn.pack(side=tk.LEFT, padx=5)
 
         # Кнопка очистки результатов тестов
         self.clear_tests_btn = tk.Button(
@@ -273,7 +272,7 @@ class GenerateApp:
             state=tk.NORMAL
         )
         self.results_text.pack(fill=tk.BOTH, expand=True)
-        self.results_text.insert(1.0, "Здесь будут отображаться результаты тестов...\n")
+        # Убрана начальная надпись - поле будет пустым
         self.results_text.config(state=tk.DISABLED)  # Только для чтения
 
         # Статусная строка
@@ -525,7 +524,7 @@ class GenerateApp:
         """Активация/деактивация кнопок тестов"""
         state = tk.NORMAL if enable else tk.DISABLED
         self.freq_test_btn.config(state=state)
-        self.all_tests_btn.config(state=state)
+        self.runs_test_btn.config(state=state)  # Добавили управление новой кнопкой
 
     def run_frequency_test(self):
         """Выполнение частотного теста"""
@@ -553,19 +552,50 @@ class GenerateApp:
             messagebox.showerror("Ошибка", f"Ошибка при выполнении теста: {str(e)}")
             self.status_label.config(text="Ошибка при выполнении теста", fg="red")
 
+    def run_runs_test(self):
+        """Выполнение теста на последовательность одинаковых бит"""
+        if not self.sequence:
+            messagebox.showwarning("Предупреждение", "Нет последовательности для тестирования!")
+            return
+
+        try:
+            # Обновляем статус
+            self.status_label.config(text="Выполняется тест на последовательность одинаковых бит...", fg="orange")
+            self.root.update()
+
+            # Выполняем тест
+            result = tests.runs_test(self.sequence)
+
+            # Отображаем результаты
+            self.display_test_result(result, "Тест на последовательность одинаковых бит")
+
+            # Обновляем статус
+            status_color = "green" if result['passed'] else "red"
+            status_text = "Тест на последовательность одинаковых бит пройден" if result[
+                'passed'] else "Тест на последовательность одинаковых бит не пройден"
+            self.status_label.config(text=status_text, fg=status_color)
+
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка при выполнении теста: {str(e)}")
+            self.status_label.config(text="Ошибка при выполнении теста", fg="red")
+
     def display_test_result(self, result, test_name):
         """Отображение результатов теста в текстовом поле"""
         self.results_text.config(state=tk.NORMAL)
 
-        # Добавляем разделитель и заголовок
+        # Добавляем разделитель и заголовок с результатом
         separator = "=" * 80
-        timestamp = dt.datetime.now().strftime("%H:%M:%S")
-        header = f"\n{separator}\n{test_name} - {timestamp}\n{separator}\n"
+        test_result = "ПРОЙДЕН" if result['passed'] else "НЕ ПРОЙДЕН"
+        header = f"\n{separator}\n{test_name}: {test_result}\n{separator}\n"
 
         self.results_text.insert(tk.END, header)
 
-        # Добавляем результаты
-        self.results_text.insert(tk.END, result['description'] + "\n")
+        # Вставляем описание теста (без первой строки, которая уже есть в заголовке)
+        description_lines = result['description'].split('\n')
+        # Пропускаем первую строку (она уже в заголовке) и объединяем остальные
+        if len(description_lines) > 1:
+            detailed_description = '\n'.join(description_lines[1:])
+            self.results_text.insert(tk.END, detailed_description + "\n")
 
         # Добавляем цветовое выделение
         if result['passed']:
@@ -577,16 +607,10 @@ class GenerateApp:
         self.results_text.see(tk.END)
         self.results_text.config(state=tk.DISABLED)
 
-    def run_all_tests(self):
-        """Выполнение всех тестов (пока только частотный)"""
-        self.run_frequency_test()
-        # Здесь будут добавляться другие тесты
-
     def clear_test_results(self):
         """Очистка результатов тестов"""
         self.results_text.config(state=tk.NORMAL)
         self.results_text.delete(1.0, tk.END)
-        self.results_text.insert(1.0, "Здесь будут отображаться результаты тестов...\n")
         self.results_text.config(state=tk.DISABLED)
         self.status_label.config(text="Результаты тестов очищены", fg="blue")
 

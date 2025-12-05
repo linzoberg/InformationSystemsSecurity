@@ -20,7 +20,7 @@ class GenerateApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Тестирование псевдослучайных последовательностей")
-        self.root.geometry("900x800")
+        self.root.geometry("900x900") # Увеличен размер окна
         # Центрируем окно на экране
         self.center_window()
 

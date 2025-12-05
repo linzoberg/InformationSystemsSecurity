@@ -69,7 +69,7 @@ class GenerateApp:
 
         # Выпадающий список для выбора генератора (сразу справа от заголовка)
         self.generator_var = tk.StringVar(value="Стандартный генератор")  # Установлено значение по умолчанию
-        generators_list = ["Стандартный генератор", "Генератор Парка-Миллера", "Генератор Геффа"]
+        generators_list = ["Стандартный генератор", "Генератор Парка-Миллера", "Генератор BBS"]
         self.generator_combo = ttk.Combobox(
             generator_frame,
             textvariable=self.generator_var,
@@ -396,11 +396,11 @@ class GenerateApp:
                     messagebox.showerror("Ошибка", "Начальное значение должно быть целым числом!")
                     return
 
-            elif generator_type == "Генератор Геффа":
-                # Использование генератора Геффа
-                geffe = generators.GeffeGenerator()
-                self.sequence = geffe.random_bits(length)
-                generator_info = "Геффа"
+            elif generator_type == "Генератор BBS":
+                # Использование генератора BBS
+                bbs = generators.BBSGenerator()
+                self.sequence = bbs.random_bits(length)
+                generator_info = "BBS"
             else:
                 messagebox.showerror("Ошибка", "Неизвестный тип генератора!")
                 return

@@ -1,9 +1,11 @@
 import tkinter as tk
-from tkinter import scrolledtext, messagebox, filedialog
+from tkinter import scrolledtext, messagebox, filedialog, ttk
 import secrets
 import os
 import sys
 import tests
+import generators  # Импортируем новый модуль с генераторами
+
 
 # Получение абсолютного пути к ресурсу для PyInstaller
 def resource_path(relative_path):
@@ -21,11 +23,16 @@ class GenerateApp:
         self.root.geometry("900x800")
         # Центрируем окно на экране
         self.center_window()
+
         # Переменные
         self.sequence = ""  # Здесь будет храниться полная последовательность
         self.full_sequence_displayed = False  # Флаг, показываем ли всю последовательность
         self.preview_length = 100  # Количество бит для предпросмотра в начале и в конце
         self.current_file = None  # Текущий открытый файл
+
+        # Переменные для генераторов
+        self.selected_generator = tk.StringVar(value="secrets")
+
         # Создание интерфейса
         self.create_widgets()
 
@@ -47,6 +54,49 @@ class GenerateApp:
             font=("Arial", 14, "bold")
         )
         title_label.pack(pady=10)
+
+        # Фрейм для выбора генератора
+        generator_frame = tk.Frame(self.root, relief=tk.GROOVE, borderwidth=2)
+        generator_frame.pack(pady=10, padx=20, fill=tk.X)
+
+        tk.Label(
+            generator_frame,
+            text="Выбор генератора:",
+            font=("Arial", 10, "bold")
+        ).pack(side=tk.LEFT, padx=5, pady=5)
+
+        # Выпадающий список для выбора генератора
+        self.generator_var = tk.StringVar(value="secrets")
+        generators_list = ["secrets (стандартный)", "Парка-Миллера", "Геффа"]
+        self.generator_combo = ttk.Combobox(
+            generator_frame,
+            textvariable=self.generator_var,
+            values=generators_list,
+            state="readonly",
+            width=25,
+            font=("Arial", 10)
+        )
+        self.generator_combo.pack(side=tk.LEFT, padx=5, pady=5)
+        self.generator_combo.bind("<<ComboboxSelected>>", self.on_generator_changed)
+
+        # Фрейм для параметров генератора Парка-Миллера
+        self.pm_params_frame = tk.Frame(generator_frame)
+        self.pm_params_frame.pack(side=tk.LEFT, padx=5)
+
+        tk.Label(
+            self.pm_params_frame,
+            text="Seed:",
+            font=("Arial", 9)
+        ).pack(side=tk.LEFT)
+
+        self.seed_entry = tk.Entry(
+            self.pm_params_frame,
+            width=10,
+            font=("Arial", 9)
+        )
+        self.seed_entry.pack(side=tk.LEFT, padx=2)
+        self.seed_entry.insert(0, "12345")
+        self.pm_params_frame.pack_forget()  # Скрываем по умолчанию
 
         # Фрейм для ввода длины
         length_frame = tk.Frame(self.root)
@@ -143,6 +193,15 @@ class GenerateApp:
             fg="gray"
         )
         self.file_info_label.pack(pady=2)
+
+        # Информация о генераторе
+        self.generator_info_label = tk.Label(
+            self.root,
+            text="Генератор: не выбран",
+            font=("Arial", 9),
+            fg="gray"
+        )
+        self.generator_info_label.pack(pady=2)
 
         # Фрейм для управления отображением
         display_frame = tk.Frame(self.root)
@@ -282,6 +341,14 @@ class GenerateApp:
         self.results_text.tag_config("passed", foreground="green", font=("Courier", 9, "bold"))
         self.results_text.tag_config("failed", foreground="red", font=("Courier", 9, "bold"))
 
+    # Обработчик изменения выбора генератора
+    def on_generator_changed(self, event=None):
+        generator_type = self.generator_combo.get()
+        if generator_type == "Парка-Миллера":
+            self.pm_params_frame.pack(side=tk.LEFT, padx=5)
+        else:
+            self.pm_params_frame.pack_forget()
+
     # Генерация псевдослучайной последовательности 0 и 1
     def generate_sequence(self):
         try:
@@ -298,13 +365,41 @@ class GenerateApp:
                 )
                 if not response:
                     return
+
+            # Получаем выбранный тип генератора
+            generator_type = self.generator_combo.get()
+
             # Обновляем статус
-            self.status_label.config(text="Генерация последовательности...", fg="orange")
+            self.status_label.config(text=f"Генерация последовательности ({generator_type})...", fg="orange")
             self.generate_btn.config(state=tk.DISABLED, text="Генерация...")
             self.root.update()  # Обновляем интерфейс
 
-            # Генерация последовательности с использованием secrets (криптографически стойкий)
-            self.sequence = ''.join(str(secrets.randbits(1)) for _ in range(length))
+            # Выбор генератора на основе пользовательского выбора
+            if generator_type == "secrets (стандартный)":
+                # Использование существующего генератора из ЛР1
+                self.sequence = ''.join(str(secrets.randbits(1)) for _ in range(length))
+                generator_info = "Стандартный (secrets.randbits)"
+
+            elif generator_type == "Парка-Миллера":
+                # Использование нового генератора Парка-Миллера
+                try:
+                    seed = int(self.seed_entry.get())
+                    pm = generators.ParkMillerGenerator(seed)
+                    self.sequence = pm.random_bits(length)
+                    generator_info = f"Парка-Миллера (seed={seed})"
+                except ValueError:
+                    messagebox.showerror("Ошибка", "Seed должен быть целым числом!")
+                    return
+
+            elif generator_type == "Геффа":
+                # Использование генератора Геффа
+                geffe = generators.GeffeGenerator()
+                self.sequence = geffe.random_bits(length)
+                generator_info = "Геффа (3 LFSR: 19, 23, 29 бит)"
+            else:
+                messagebox.showerror("Ошибка", "Неизвестный тип генератора!")
+                return
+
             self.current_file = None  # Сбрасываем информацию о файле
 
             # Отображаем последовательность
@@ -323,6 +418,9 @@ class GenerateApp:
             # Обновляем информацию о файле
             self.file_info_label.config(text="Файл: не сохранено", fg="gray")
 
+            # Обновляем информацию о генераторе
+            self.generator_info_label.config(text=f"Генератор: {generator_info}", fg="green")
+
             # Активируем кнопку сохранения
             self.save_btn.config(state=tk.NORMAL)
 
@@ -330,7 +428,10 @@ class GenerateApp:
             self.enable_test_buttons()
 
             # Обновляем статус
-            self.status_label.config(text=f"Последовательность из {length} бит успешно сгенерирована", fg="green")
+            self.status_label.config(
+                text=f"Последовательность из {length} бит успешно сгенерирована ({generator_type})",
+                fg="green"
+            )
 
         except ValueError:
             messagebox.showerror("Ошибка", "Пожалуйста, введите корректное число для длины!")
@@ -381,6 +482,9 @@ class GenerateApp:
             # Обновляем информацию о файле
             filename = os.path.basename(filepath)
             self.file_info_label.config(text=f"Файл: {filename}", fg="green")
+
+            # Обновляем информацию о генераторе
+            self.generator_info_label.config(text="Генератор: загружено из файла", fg="blue")
 
             # Активируем кнопку сохранения
             self.save_btn.config(state=tk.NORMAL)
@@ -497,6 +601,7 @@ class GenerateApp:
         self.text_area.delete(1.0, tk.END)
         self.info_label.config(text="Последовательность не сгенерирована", fg="blue")
         self.file_info_label.config(text="Файл: не выбран", fg="gray")
+        self.generator_info_label.config(text="Генератор: не выбран", fg="gray")
         self.save_btn.config(state=tk.DISABLED)
 
         # Деактивируем кнопки тестов

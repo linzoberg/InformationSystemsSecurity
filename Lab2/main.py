@@ -31,7 +31,7 @@ class GenerateApp:
         self.current_file = None  # Текущий открытый файл
 
         # Переменные для генераторов
-        self.selected_generator = tk.StringVar(value="secrets")
+        self.selected_generator = tk.StringVar(value="standard")
 
         # Создание интерфейса
         self.create_widgets()
@@ -55,19 +55,21 @@ class GenerateApp:
         )
         title_label.pack(pady=10)
 
-        # Фрейм для выбора генератора
-        generator_frame = tk.Frame(self.root, relief=tk.GROOVE, borderwidth=2)
-        generator_frame.pack(pady=10, padx=20, fill=tk.X)
+        # Фрейм для выбора генератора (горизонтальное расположение)
+        generator_frame = tk.Frame(self.root)
+        generator_frame.pack(pady=10, padx=(120, 0), fill=tk.X)
 
-        tk.Label(
+        # Заголовок слева
+        generator_title = tk.Label(
             generator_frame,
             text="Выбор генератора:",
-            font=("Arial", 10, "bold")
-        ).pack(side=tk.LEFT, padx=5, pady=5)
+            font=("Arial", 11, "bold")
+        )
+        generator_title.pack(side=tk.LEFT, padx=(0, 10))
 
-        # Выпадающий список для выбора генератора
-        self.generator_var = tk.StringVar(value="secrets")
-        generators_list = ["secrets (стандартный)", "Парка-Миллера", "Геффа"]
+        # Выпадающий список для выбора генератора (сразу справа от заголовка)
+        self.generator_var = tk.StringVar(value="Стандартный генератор")  # Установлено значение по умолчанию
+        generators_list = ["Стандартный генератор", "Генератор Парка-Миллера", "Генератор Геффа"]
         self.generator_combo = ttk.Combobox(
             generator_frame,
             textvariable=self.generator_var,
@@ -76,27 +78,27 @@ class GenerateApp:
             width=25,
             font=("Arial", 10)
         )
-        self.generator_combo.pack(side=tk.LEFT, padx=5, pady=5)
+        self.generator_combo.pack(side=tk.LEFT, padx=(0, 10))
         self.generator_combo.bind("<<ComboboxSelected>>", self.on_generator_changed)
 
-        # Фрейм для параметров генератора Парка-Миллера
+        # Фрейм для параметров генератора Парка-Миллера (будет справа от выпадающего списка)
         self.pm_params_frame = tk.Frame(generator_frame)
-        self.pm_params_frame.pack(side=tk.LEFT, padx=5)
 
-        tk.Label(
+        # Виджеты для параметров Парка-Миллера (создаем, но не отображаем сразу)
+        self.seed_label = tk.Label(
             self.pm_params_frame,
-            text="Seed:",
+            text="Начальное значение (seed):",
             font=("Arial", 9)
-        ).pack(side=tk.LEFT)
+        )
+        self.seed_label.pack(side=tk.LEFT, padx=(0, 5))
 
         self.seed_entry = tk.Entry(
             self.pm_params_frame,
-            width=10,
+            width=15,
             font=("Arial", 9)
         )
-        self.seed_entry.pack(side=tk.LEFT, padx=2)
+        self.seed_entry.pack(side=tk.LEFT)
         self.seed_entry.insert(0, "12345")
-        self.pm_params_frame.pack_forget()  # Скрываем по умолчанию
 
         # Фрейм для ввода длины
         length_frame = tk.Frame(self.root)
@@ -185,6 +187,15 @@ class GenerateApp:
         )
         self.info_label.pack(pady=5)
 
+        # Информация о выбранном генераторе
+        self.generator_info_label = tk.Label(
+            self.root,
+            text="Выбранный генератор: не выбран",
+            font=("Arial", 9),
+            fg="gray"
+        )
+        self.generator_info_label.pack(pady=2)
+
         # Информация о файле
         self.file_info_label = tk.Label(
             self.root,
@@ -193,15 +204,6 @@ class GenerateApp:
             fg="gray"
         )
         self.file_info_label.pack(pady=2)
-
-        # Информация о генераторе
-        self.generator_info_label = tk.Label(
-            self.root,
-            text="Генератор: не выбран",
-            font=("Arial", 9),
-            fg="gray"
-        )
-        self.generator_info_label.pack(pady=2)
 
         # Фрейм для управления отображением
         display_frame = tk.Frame(self.root)
@@ -323,7 +325,6 @@ class GenerateApp:
             state=tk.NORMAL
         )
         self.results_text.pack(fill=tk.BOTH, expand=True)
-        # Убрана начальная надпись - поле будет пустым
         self.results_text.config(state=tk.DISABLED)  # Только для чтения
 
         # Статусная строка
@@ -344,10 +345,14 @@ class GenerateApp:
     # Обработчик изменения выбора генератора
     def on_generator_changed(self, event=None):
         generator_type = self.generator_combo.get()
-        if generator_type == "Парка-Миллера":
-            self.pm_params_frame.pack(side=tk.LEFT, padx=5)
-        else:
-            self.pm_params_frame.pack_forget()
+
+        # Скрываем фрейм параметров, если он отображается
+        self.pm_params_frame.pack_forget()
+
+        if generator_type == "Генератор Парка-Миллера":
+            # Отображаем фрейм параметров справа от выпадающего списка
+            self.pm_params_frame.pack(side=tk.LEFT, padx=(0, 10))
+        # Для других генераторов ничего не отображаем
 
     # Генерация псевдослучайной последовательности 0 и 1
     def generate_sequence(self):
@@ -375,12 +380,12 @@ class GenerateApp:
             self.root.update()  # Обновляем интерфейс
 
             # Выбор генератора на основе пользовательского выбора
-            if generator_type == "secrets (стандартный)":
+            if generator_type == "Стандартный генератор":
                 # Использование существующего генератора из ЛР1
                 self.sequence = ''.join(str(secrets.randbits(1)) for _ in range(length))
-                generator_info = "Стандартный (secrets.randbits)"
+                generator_info = "Стандартный"
 
-            elif generator_type == "Парка-Миллера":
+            elif generator_type == "Генератор Парка-Миллера":
                 # Использование нового генератора Парка-Миллера
                 try:
                     seed = int(self.seed_entry.get())
@@ -388,14 +393,14 @@ class GenerateApp:
                     self.sequence = pm.random_bits(length)
                     generator_info = f"Парка-Миллера (seed={seed})"
                 except ValueError:
-                    messagebox.showerror("Ошибка", "Seed должен быть целым числом!")
+                    messagebox.showerror("Ошибка", "Начальное значение должно быть целым числом!")
                     return
 
-            elif generator_type == "Геффа":
+            elif generator_type == "Генератор Геффа":
                 # Использование генератора Геффа
                 geffe = generators.GeffeGenerator()
                 self.sequence = geffe.random_bits(length)
-                generator_info = "Геффа (3 LFSR: 19, 23, 29 бит)"
+                generator_info = "Геффа"
             else:
                 messagebox.showerror("Ошибка", "Неизвестный тип генератора!")
                 return
@@ -415,11 +420,11 @@ class GenerateApp:
                 fg="green"
             )
 
+            # Обновляем информацию о выбранном генераторе
+            self.generator_info_label.config(text=f"Выбранный генератор: {generator_info}", fg="green")
+
             # Обновляем информацию о файле
             self.file_info_label.config(text="Файл: не сохранено", fg="gray")
-
-            # Обновляем информацию о генераторе
-            self.generator_info_label.config(text=f"Генератор: {generator_info}", fg="green")
 
             # Активируем кнопку сохранения
             self.save_btn.config(state=tk.NORMAL)
@@ -479,12 +484,12 @@ class GenerateApp:
                 fg="green"
             )
 
+            # Обновляем информацию о выбранном генераторе
+            self.generator_info_label.config(text="Выбранный генератор: загружено из файла", fg="blue")
+
             # Обновляем информацию о файле
             filename = os.path.basename(filepath)
             self.file_info_label.config(text=f"Файл: {filename}", fg="green")
-
-            # Обновляем информацию о генераторе
-            self.generator_info_label.config(text="Генератор: загружено из файла", fg="blue")
 
             # Активируем кнопку сохранения
             self.save_btn.config(state=tk.NORMAL)
@@ -549,7 +554,7 @@ class GenerateApp:
             self.current_file = filepath
             filename = os.path.basename(filepath)
 
-            # Обновляем информацию
+            # Обновляем информацию о файле
             self.file_info_label.config(text=f"Файл: {filename} (сохранено)", fg="green")
             self.status_label.config(text=f"Последовательность сохранена в файл: {filename}", fg="green")
 
@@ -600,9 +605,13 @@ class GenerateApp:
         self.current_file = None
         self.text_area.delete(1.0, tk.END)
         self.info_label.config(text="Последовательность не сгенерирована", fg="blue")
+        self.generator_info_label.config(text="Выбранный генератор: не выбран", fg="gray")
         self.file_info_label.config(text="Файл: не выбран", fg="gray")
-        self.generator_info_label.config(text="Генератор: не выбран", fg="gray")
         self.save_btn.config(state=tk.DISABLED)
+
+        # Сбрасываем выпадающий список к значению по умолчанию
+        self.generator_combo.set("Стандартный генератор")
+        self.pm_params_frame.pack_forget()  # Скрываем параметры Парка-Миллера
 
         # Деактивируем кнопки тестов
         self.enable_test_buttons(False)

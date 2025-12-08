@@ -30,9 +30,21 @@ class ParkMillerGenerator:
             bits.append(str(bit))
         return ''.join(bits)
 
+    # Генерация последовательности байтов заданной длины
+    def random_bytes(self, n):
+        bytes_list = []
+        for _ in range(n):
+            # Генерируем 8 бит для получения одного байта
+            byte_val = 0
+            for bit_num in range(8):
+                byte_val = (byte_val << 1) | (self.next() & 1)
+            bytes_list.append(byte_val)
+        return bytes(bytes_list)
+
+
 # Генератор Blum-Blum-Shub (BBS)
 class BBSGenerator:
-    # Инициализация генератора BBS
+    # Инициализация генератора BBS с возможностью задания seed
     def __init__(self, seed=None):
         # Два простых числа, удовлетворяющих условию p ≡ 3 mod 4
         self.p = 30000000091  # Простое число, p ≡ 3 mod 4
@@ -66,3 +78,14 @@ class BBSGenerator:
         for _ in range(n):
             bits.append(str(self.next_bit()))
         return ''.join(bits)
+
+    # Генерация последовательности байтов заданной длины
+    def random_bytes(self, n):
+        bytes_list = []
+        for _ in range(n):
+            # Генерируем 8 бит для получения одного байта
+            byte_val = 0
+            for bit_num in range(8):
+                byte_val = (byte_val << 1) | self.next_bit()
+            bytes_list.append(byte_val)
+        return bytes(bytes_list)

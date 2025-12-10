@@ -240,15 +240,14 @@ class CipherApp:
         # 2. Определение расширения для выходного файла
         base_name = os.path.splitext(os.path.basename(input_file))[0]
         if operation == "encrypt":
+            # Используем новую функцию для генерации имени зашифрованного файла
+            default_name = cipher.generate_encrypted_filename(input_file)
             default_ext = ".enc"
-            default_name = f"{base_name}_encrypted{default_ext}"
             file_types = [("Зашифрованные файлы", "*.enc"), ("Все файлы", "*.*")]
         else:
-            # Попробуем удалить "_encrypted" из имени
-            if base_name.endswith("_encrypted"):
-                base_name = base_name[:-10]
+            # Используем новую функцию для генерации имени дешифрованного файла
+            default_name = cipher.generate_decrypted_filename(input_file)
             default_ext = ""
-            default_name = f"{base_name}_decrypted"
             file_types = [("Все файлы", "*.*")]
 
         # 3. Диалог сохранения

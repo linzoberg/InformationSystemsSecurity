@@ -2,9 +2,9 @@ import os
 import hashes
 import generators
 
-
 # Размер блока для обработки файлов (8 КБ)
 BLOCK_SIZE = 8192
+
 
 # Шифрует или дешифрует файл с использованием потокового шифрования
 def encrypt_decrypt_file(input_path, output_path, password, hash_type="MD5",
@@ -102,17 +102,20 @@ def encrypt_decrypt_file(input_path, output_path, password, hash_type="MD5",
             'error': f"Непредвиденная ошибка: {str(e)}"
         }
 
+
 # Шифрует файл
 def encrypt_file(input_path, output_path, password, hash_type="MD5",
                  generator_type="Парка-Миллера", progress_callback=None):
     return encrypt_decrypt_file(input_path, output_path, password,
                                 hash_type, generator_type, progress_callback)
 
+
 # Дешифрует файл
 def decrypt_file(input_path, output_path, password, hash_type="MD5",
                  generator_type="Парка-Миллера", progress_callback=None):
     return encrypt_decrypt_file(input_path, output_path, password,
                                 hash_type, generator_type, progress_callback)
+
 
 # Проверяет минимальные требования к паролю
 def validate_password(password):
@@ -123,6 +126,30 @@ def validate_password(password):
         return False, "Введите хотя бы один символ"
 
     return True, "Пароль корректен"
+
+
+# Формирует имя файла для шифрования
+def generate_encrypted_filename(input_path):
+    base_name = os.path.basename(input_path)
+    encrypted_name = f"{base_name}_encrypted.enc"
+    return encrypted_name
+
+
+# Формирует имя файла для дешифрования
+def generate_decrypted_filename(input_path):
+    base_name = os.path.basename(input_path)
+
+    # Убираем суффикс _encrypted.enc
+    if base_name.endswith("_encrypted.enc"):
+        base_name = base_name[:-len("_encrypted.enc")]
+
+    # Разделяем имя и расширение
+    name_part, ext = os.path.splitext(base_name)
+
+    # Формируем новое имя: имя_decrypted.расширение
+    decrypted_name = f"{name_part}_decrypted{ext}"
+    return decrypted_name
+
 
 # Получает информацию о файле
 def get_file_info(file_path):
@@ -146,6 +173,11 @@ def get_file_info(file_path):
             '.png': 'Изображение PNG',
             '.bmp': 'Изображение BMP',
             '.gif': 'Изображение GIF',
+            '.mp4': 'Видео MP4',
+            '.avi': 'Видео AVI',
+            '.mov': 'Видео MOV',
+            '.mp3': 'Аудио MP3',
+            '.wav': 'Аудио WAV',
             '.enc': 'Зашифрованный файл',
             '.bin': 'Бинарный файл',
             '.exe': 'Исполняемый файл',
@@ -168,6 +200,7 @@ def get_file_info(file_path):
 
     except Exception as e:
         return {'success': False, 'error': str(e)}
+
 
 # Форматирует размер файла в удобочитаемый вид
 def format_file_size(size_in_bytes):
@@ -199,8 +232,14 @@ if __name__ == "__main__":
 
         print(f"Создан тестовый файл: {test_file} ({len(test_content)} байт)")
 
+        # Тестируем генерацию имен файлов
+        print("\n1. Тестирование генерации имен файлов:")
+        print(f"   Исходный файл: test_video.MP4")
+        print(f"   Зашифрованный: {generate_encrypted_filename('test_video.MP4')}")
+        print(f"   Дешифрованный: {generate_decrypted_filename('test_video.MP4_encrypted.enc')}")
+
         # Тестируем шифрование
-        print("\n1. Тестирование шифрования с MD5 и Парка-Миллера:")
+        print("\n2. Тестирование шифрования с MD5 и Парка-Миллера:")
         result = encrypt_file(
             input_path=test_file,
             output_path=encrypted_file,
@@ -216,7 +255,7 @@ if __name__ == "__main__":
             print(f"   Ошибка: {result['error']}")
 
         # Тестируем дешифрование
-        print("\n2. Тестирование дешифрования с MD5 и Парка-Миллера:")
+        print("\n3. Тестирование дешифрования с MD5 и Парка-Миллера:")
         result = decrypt_file(
             input_path=encrypted_file,
             output_path=decrypted_file,
@@ -240,7 +279,7 @@ if __name__ == "__main__":
             print(f"   Ошибка: {result['error']}")
 
         # Тестируем с MaHash8 и BBS
-        print("\n3. Тестирование шифрования с MaHash8 и BBS:")
+        print("\n4. Тестирование шифрования с MaHash8 и BBS:")
         encrypted_file2 = "test_encrypted2.bin"
         decrypted_file2 = "test_decrypted2.txt"
 
@@ -280,7 +319,7 @@ if __name__ == "__main__":
             print(f"   Ошибка при шифровании: {result['error']}")
 
         # Тестируем функцию получения информации о файле
-        print("\n4. Тестирование get_file_info:")
+        print("\n5. Тестирование get_file_info:")
         info = get_file_info(test_file)
         if info['success']:
             print(f"   Имя: {info['name']}")
@@ -296,7 +335,7 @@ if __name__ == "__main__":
     finally:
         # Удаляем тестовые файлы
         for file in [test_file, encrypted_file, decrypted_file,
-                    encrypted_file2, decrypted_file2]:
+                     encrypted_file2, decrypted_file2]:
             if os.path.exists(file):
                 try:
                     os.remove(file)

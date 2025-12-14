@@ -8,7 +8,7 @@ class BlockCipherApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Блочные шифры, режимы использования блочных шифров")
-        self.root.geometry("700x750")
+        self.root.geometry("700x700")
 
         # Центрируем окно
         self.center_window()

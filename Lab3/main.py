@@ -8,7 +8,7 @@ class CipherApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Потоковые шифры, функции хеширования")
-        self.root.geometry("700x800")
+        self.root.geometry("700x700")
 
         # Центрируем окно
         self.center_window()

@@ -1,14 +1,14 @@
 import tkinter as tk
 from tkinter import scrolledtext, messagebox, filedialog, ttk
 import os
-import cipher
+import block_cipher
 
 
-class CipherApp:
+class BlockCipherApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Потоковые шифры, функции хеширования")
-        self.root.geometry("700x800")
+        self.root.title("Блочные шифры, режимы использования блочных шифров")
+        self.root.geometry("700x750")
 
         # Центрируем окно
         self.center_window()
@@ -28,8 +28,9 @@ class CipherApp:
         # Заголовок
         title_label = tk.Label(
             self.root,
-            text="Потоковые шифры, функции хеширования",
-            font=("Arial", 14, "bold")
+            text="Блочные шифры, режимы использования блочных шифров",
+            font=("Arial", 14, "bold"),
+            justify="center"
         )
         title_label.pack(pady=10)
 
@@ -91,19 +92,6 @@ class CipherApp:
             font=("Arial", 9)
         )
         hash_combo.grid(row=0, column=3, sticky="w", pady=5)
-
-        # Генератор псевдослучайных чисел
-        tk.Label(params_frame, text="Генератор:", font=("Arial", 10)).grid(row=1, column=0, sticky="w", pady=5)
-        self.generator_var = tk.StringVar(value="BBS")
-        generator_combo = ttk.Combobox(
-            params_frame,
-            textvariable=self.generator_var,
-            values=["Парка-Миллера", "BBS"],
-            state="readonly",
-            width=15,
-            font=("Arial", 9)
-        )
-        generator_combo.grid(row=1, column=1, sticky="w", padx=(10, 0), pady=5)
 
         # === БЛОК 3: КНОПКИ ДЕЙСТВИЙ ===
         buttons_frame = tk.Frame(self.root)
@@ -196,13 +184,14 @@ class CipherApp:
                 ("Документы", "*.docx *.pdf *.doc"),
                 ("Изображения", "*.jpg *.png *.bmp *.gif"),
                 ("Архивы", "*.zip *.rar"),
-                ("Исполняемые файлы", "*.exe *.msi")
+                ("Исполняемые файлы", "*.exe *.msi"),
+                ("Зашифрованные файлы", "*.bcipher")
             ]
         )
 
         if filepath:
             self.file_path_var.set(filepath)
-            info = cipher.get_file_info(filepath)
+            info = block_cipher.get_file_info(filepath)
 
             if info['success']:
                 self.file_info_label.config(
@@ -238,21 +227,22 @@ class CipherApp:
             return
 
         # 2. Определение расширения для выходного файла
-        base_name = os.path.splitext(os.path.basename(input_file))[0]
         if operation == "encrypt":
-            # Используем новую функцию для генерации имени зашифрованного файла
-            default_name = cipher.generate_encrypted_filename(input_file)
-            default_ext = ".enc"
-            file_types = [("Зашифрованные файлы", "*.enc"), ("Все файлы", "*.*")]
+            # Используем функцию для генерации имени зашифрованного файла
+            default_name = block_cipher.generate_encrypted_filename(input_file)
+            default_ext = ".bcipher"
+            file_types = [("Зашифрованные файлы (блочный шифр)", "*.bcipher"), ("Все файлы", "*.*")]
+            operation_name = "зашифрованный"
         else:
-            # Используем новую функцию для генерации имени дешифрованного файла
-            default_name = cipher.generate_decrypted_filename(input_file)
+            # Используем функцию для генерации имени дешифрованного файла
+            default_name = block_cipher.generate_decrypted_filename(input_file)
             default_ext = ""
             file_types = [("Все файлы", "*.*")]
+            operation_name = "дешифрованный"
 
         # 3. Диалог сохранения
         output_file = filedialog.asksaveasfilename(
-            title=f"Сохранить {'зашифрованный' if operation == 'encrypt' else 'дешифрованный'} файл",
+            title=f"Сохранить {operation_name} файл",
             defaultextension=default_ext,
             initialfile=default_name,
             filetypes=file_types
@@ -278,21 +268,19 @@ class CipherApp:
 
         try:
             if operation == "encrypt":
-                result = cipher.encrypt_file(
+                result = block_cipher.encrypt_file(
                     input_path=input_file,
                     output_path=output_file,
                     password=password,
                     hash_type=self.hash_var.get(),
-                    generator_type=self.generator_var.get(),
                     progress_callback=self.update_progress
                 )
             else:
-                result = cipher.decrypt_file(
+                result = block_cipher.decrypt_file(
                     input_path=input_file,
                     output_path=output_file,
                     password=password,
                     hash_type=self.hash_var.get(),
-                    generator_type=self.generator_var.get(),
                     progress_callback=self.update_progress
                 )
 
@@ -302,24 +290,25 @@ class CipherApp:
 
                 if operation == "encrypt":
                     self.log_info(f"Файл успешно зашифрован")
+                    self.status_label.config(text=f"Файл зашифрован: {os.path.basename(output_file)}", fg="green")
                 else:
                     self.log_info(f"Файл успешно дешифрован")
+                    self.status_label.config(text=f"Файл дешифрован: {os.path.basename(output_file)}", fg="green")
 
                 self.log_info(f"  Выходной файл: {os.path.basename(output_file)}")
-                self.log_info(f"  Размер: {result['output_size']} байт")
+                self.log_info(f"  Размер: {block_cipher.format_file_size(result['output_size'])}")
                 self.log_info(f"  Хеш-функция: {result['hash_type']}")
-                self.log_info(f"  Генератор: {result['generator_type']}")
                 self.log_info(f"  Seed: {result['seed_hex']}")
+
+                if operation == "encrypt":
+                    self.log_info(f"  IV: {result['iv']}")
+                else:
+                    self.log_info(f"  IV: {result['iv_used']}")
 
                 messagebox.showinfo("Успех",
                                     f"Файл успешно {'зашифрован' if operation == 'encrypt' else 'дешифрован'}!\n\n"
                                     f"Сохранён как: {os.path.basename(output_file)}\n"
-                                    f"Размер: {cipher.format_file_size(result['output_size'])}")
-
-                if operation == "encrypt":
-                    self.status_label.config(text=f"Файл зашифрован: {os.path.basename(output_file)}", fg="green")
-                else:
-                    self.status_label.config(text=f"Файл дешифрован: {os.path.basename(output_file)}", fg="green")
+                                    f"Размер: {block_cipher.format_file_size(result['output_size'])}")
             else:
                 self.progress_label.config(text="Ошибка", fg="red")
                 self.log_info(f"Ошибка: {result['error']}")
@@ -356,7 +345,7 @@ class CipherApp:
 
 def main():
     root = tk.Tk()
-    app = CipherApp(root)
+    app = BlockCipherApp(root)
     root.mainloop()
 
 

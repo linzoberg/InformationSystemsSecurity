@@ -174,8 +174,9 @@ class BlockCipherApp:
         )
         self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
 
+    # Открыть диалог выбора файла
     def browse_file(self):
-        """Открыть диалог выбора файла"""
+
         filepath = filedialog.askopenfilename(
             title="Выберите файл для шифрования/дешифрования",
             filetypes=[
@@ -200,16 +201,17 @@ class BlockCipherApp:
                 )
                 self.log_info(f"Выбран файл: {info['name']} ({info['size_human']})")
 
+    # Зашифровать файл
     def encrypt_file(self):
-        """Зашифровать файл"""
         self.process_file("encrypt")
 
+    # Дешифровать файл
     def decrypt_file(self):
-        """Дешифровать файл"""
         self.process_file("decrypt")
 
+    # Выполнить шифрование или дешифрование
     def process_file(self, operation):
-        """Выполнить шифрование или дешифрование"""
+
         # 1. Проверка входных данных
         input_file = self.file_path_var.get()
         password = self.password_entry.get()
@@ -325,20 +327,22 @@ class BlockCipherApp:
             self.set_ui_state(True)
             self.progress_var.set(0)
 
+
     def update_progress(self, percent):
-        """Обновить прогресс-бар"""
+        # Обновить прогресс-бар
         self.progress_var.set(percent)
         self.progress_label.config(text=f"Выполнено: {percent}%")
         self.root.update_idletasks()
 
+
     def set_ui_state(self, enabled):
-        """Включить/выключить элементы интерфейса"""
+        # Включить/выключить элементы интерфейса
         state = "normal" if enabled else "disabled"
         self.encrypt_btn.config(state=state)
         self.decrypt_btn.config(state=state)
 
     def log_info(self, message):
-        """Добавить сообщение в информационное поле"""
+        # Добавить сообщение в информационное поле
         self.info_text.insert("end", f"{message}\n")
         self.info_text.see("end")
 

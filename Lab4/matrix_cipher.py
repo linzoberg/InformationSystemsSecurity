@@ -1,31 +1,17 @@
 import numpy as np
 import generators
 
+# Матричный шифр для блоков 5 байт. Использует обратимую матрицу 5x5 по модулю 256.
 class MatrixCipher5x5:
-    """
-    Матричный шифр для блоков 5 байт.
-    Использует обратимую матрицу 5x5 по модулю 256.
-    """
 
+    # Инициализация матричного шифра с заданным seed - начальное значение для генератора ПСЧ
     def __init__(self, seed):
-        """
-        Инициализация матричного шифра с заданным seed.
-
-        Args:
-            seed: Начальное значение для генератора ПСЧ
-        """
         self.prng = generators.ParkMillerGenerator(seed)
         self.matrix = self._generate_invertible_matrix()
         self.matrix_inv = self._calculate_inverse_matrix()
 
+    # Генерирует обратимую матрицу 5x5 по модулю 256. Матрица обратима, если её определитель нечетный.
     def _generate_invertible_matrix(self):
-        """
-        Генерирует обратимую матрицу 5x5 по модулю 256.
-        Матрица обратима, если её определитель нечетный.
-
-        Returns:
-            numpy.ndarray: Матрица 5x5 с элементами 0-255
-        """
         max_attempts = 1000
         for attempt in range(max_attempts):
             # Генерируем случайную матрицу 5x5
@@ -33,68 +19,39 @@ class MatrixCipher5x5:
             for i in range(5):
                 for j in range(5):
                     matrix[i][j] = self.prng.next() % 256
-
             # Проверяем, что определитель нечетный (матрица обратима по модулю 256)
             det = int(round(np.linalg.det(matrix)))
             if det % 2 == 1:  # Определитель нечетный - матрица обратима
                 return matrix
-
         # Если не удалось сгенерировать - используем единичную матрицу
         print(f"Предупреждение: не удалось сгенерировать обратимую матрицу за {max_attempts} попыток")
         return np.identity(5, dtype=np.int32) * 17  # 17 нечетное
 
+    # Вычисляет обратную матрицу по модулю 256
     def _calculate_inverse_matrix(self):
-        """
-        Вычисляет обратную матрицу по модулю 256.
-
-        Returns:
-            numpy.ndarray: Обратная матрица 5x5 по модулю 256
-        """
         # Находим определитель
         det = int(round(np.linalg.det(self.matrix)))
-
         # Находим обратный элемент для определителя по модулю 256
         # Так как det нечетный, он взаимно прост с 256
         det_inv = self._mod_inverse(det, 256)
-
         # Вычисляем присоединенную матрицу
         adj = self._adjugate_matrix(self.matrix)
-
         # Вычисляем обратную матрицу: inv = (det_inv * adj) mod 256
         matrix_inv = (det_inv * adj) % 256
         return matrix_inv.astype(np.int32)
 
+    #Находит обратный элемент a по модулю m. Используется расширенный алгоритм Евклида.
     def _mod_inverse(self, a, m):
-        """
-        Находит обратный элемент a по модулю m.
-        Используется расширенный алгоритм Евклида.
-
-        Args:
-            a: Число
-            m: Модуль
-
-        Returns:
-            int: a^(-1) mod m
-        """
-        a = a % m
+        a = a % m # a - число, m - модуль
         for x in range(1, m):
             if (a * x) % m == 1:
                 return x
         return 1
 
+    # Вычисляет присоединенную матрицу
     def _adjugate_matrix(self, matrix):
-        """
-        Вычисляет присоединенную матрицу.
-
-        Args:
-            matrix: Исходная матрица
-
-        Returns:
-            numpy.ndarray: Присоединенная матрица
-        """
         n = matrix.shape[0]
         adj = np.zeros((n, n), dtype=np.int32)
-
         for i in range(n):
             for j in range(n):
                 # Получаем минор
@@ -103,60 +60,32 @@ class MatrixCipher5x5:
                 cofactor = ((-1) ** (i + j)) * int(round(np.linalg.det(minor)))
                 # Транспонируем для присоединенной матрицы
                 adj[j][i] = cofactor
-
         return adj
 
+    # Шифрует блок 5 байт
     def encrypt_block(self, block):
-        """
-        Шифрует блок 5 байт.
-
-        Args:
-            block: Байты длиной 5
-
-        Returns:
-            bytes: Зашифрованный блок длиной 5 байт
-        """
         if len(block) != 5:
             raise ValueError(f"Размер блока должен быть 5 байт, получено {len(block)}")
-
         # Преобразуем блок в вектор
         vec = np.array([b for b in block], dtype=np.int32)
-
         # Умножаем матрицу на вектор по модулю 256
         result = (self.matrix @ vec) % 256
-
         # Преобразуем обратно в байты
         return bytes(result.tolist())
 
+    # Дешифрует блок 5 байт
     def decrypt_block(self, block):
-        """
-        Дешифрует блок 5 байт.
-
-        Args:
-            block: Байты длиной 5
-
-        Returns:
-            bytes: Дешифрованный блок длиной 5 байт
-        """
         if len(block) != 5:
             raise ValueError(f"Размер блока должен быть 5 байт, получено {len(block)}")
-
         # Преобразуем блок в вектор
         vec = np.array([b for b in block], dtype=np.int32)
-
         # Умножаем обратную матрицу на вектор по модулю 256
         result = (self.matrix_inv @ vec) % 256
-
         # Преобразуем обратно в байты
         return bytes(result.tolist())
 
+    # Возвращает информацию о матрице для отладки
     def get_matrix_info(self):
-        """
-        Возвращает информацию о матрице для отладки.
-
-        Returns:
-            dict: Информация о матрице
-        """
         det = int(round(np.linalg.det(self.matrix)))
         return {
             'matrix': self.matrix.tolist(),
@@ -164,32 +93,25 @@ class MatrixCipher5x5:
             'matrix_inv': self.matrix_inv.tolist()
         }
 
-
+# Тестирование матричного шифра
 def test_matrix_cipher():
-    """Тестирование матричного шифра"""
     print("Тестирование MatrixCipher5x5...")
-
     # Тестовый seed
     cipher = MatrixCipher5x5(12345)
-
     # Тестовый блок
     test_block = b"Hello"
     print(f"Исходный блок: {test_block}")
-
     # Шифрование
     encrypted = cipher.encrypt_block(test_block)
     print(f"Зашифрованный блок: {encrypted}")
-
     # Дешифрование
     decrypted = cipher.decrypt_block(encrypted)
     print(f"Дешифрованный блок: {decrypted}")
-
     # Проверка
     if decrypted == test_block:
         print("✓ Тест пройден: блок корректно шифруется и дешифруется")
     else:
         print("✗ Тест не пройден: блок не совпадает")
-
     # Проверка обратимости матрицы
     info = cipher.get_matrix_info()
     print(f"Определитель матрицы: {info['determinant']}")

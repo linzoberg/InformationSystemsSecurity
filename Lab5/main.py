@@ -11,7 +11,7 @@ class AsymmetricCryptoGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Асимметричная криптография")
-        self.root.geometry("700x700")  # Изменено на 700x700
+        self.root.geometry("700x700")
 
         # Инициализация ядра приложения
         self.app = AsymmetricCryptoApp(prime_bits=32)
@@ -283,6 +283,27 @@ class AsymmetricCryptoGUI:
             )
             self.log_info(f"Выбран файл: {os.path.basename(filepath)} ({self.format_size(size)})")
 
+    def generate_encrypted_filename(self, input_path: str) -> str:
+        """Генерирует имя для зашифрованного файла (как в ЛР4)."""
+        base_name = os.path.basename(input_path)
+        encrypted_name = f"{base_name}_encrypted.enc"
+        return encrypted_name
+
+    def generate_decrypted_filename(self, input_path: str) -> str:
+        """Генерирует имя для дешифрованного файла (как в ЛР4)."""
+        base_name = os.path.basename(input_path)
+
+        # Убираем суффикс _encrypted.enc
+        if base_name.endswith("_encrypted.enc"):
+            base_name = base_name[:-len("_encrypted.enc")]
+
+        # Разделяем имя и расширение
+        name_part, ext = os.path.splitext(base_name)
+
+        # Формируем новое имя: имя_decrypted.расширение
+        decrypted_name = f"{name_part}_decrypted{ext}"
+        return decrypted_name
+
     def encrypt_file(self):
         """Шифрование файла."""
         input_file = self.file_path_var.get()
@@ -303,11 +324,15 @@ class AsymmetricCryptoGUI:
             messagebox.showerror("Ошибка", "Некорректный файл открытого ключа!")
             return
 
+        # Генерируем имя зашифрованного файла
+        default_name = self.generate_encrypted_filename(input_file)
+
         # Выбор места сохранения
         output_file = filedialog.asksaveasfilename(
             title="Сохранить зашифрованный файл",
             defaultextension=".enc",
-            initialfile=os.path.basename(input_file) + ".enc"
+            initialfile=default_name,
+            filetypes=[("Зашифрованные файлы", "*.enc"), ("Все файлы", "*.*")]
         )
         if not output_file:
             return
@@ -332,7 +357,7 @@ class AsymmetricCryptoGUI:
                 input_file,
                 output_file,
                 json.dumps(key_data['parameters']),
-                progress_callback=self.update_progress  # Добавляем callback для прогресса
+                progress_callback=self.update_progress
             )
 
             # Завершаем прогресс
@@ -343,7 +368,6 @@ class AsymmetricCryptoGUI:
                 self.log_info(f"  Выходной файл: {os.path.basename(output_file)}")
                 self.log_info(
                     f"  Размер: {self.format_size(result['input_size'])} → {self.format_size(result['output_size'])}")
-                self.log_info(f"  Seed: {result.get('seed_hex', 'N/A')}")
 
                 self.progress_label.config(text="Готово!", fg="green")
                 self.status_label.config(text=f"Файл зашифрован: {os.path.basename(output_file)}", fg="green")
@@ -385,15 +409,15 @@ class AsymmetricCryptoGUI:
             messagebox.showerror("Ошибка", "Некорректный файл закрытого ключа!")
             return
 
-        # Выбор места сохранения
-        default_name = os.path.basename(input_file).replace('.enc', '')
-        if default_name == os.path.basename(input_file):
-            default_name = default_name + "_decrypted"
+        # Генерируем имя дешифрованного файла
+        default_name = self.generate_decrypted_filename(input_file)
 
+        # Выбор места сохранения
         output_file = filedialog.asksaveasfilename(
             title="Сохранить дешифрованный файл",
             defaultextension="",
-            initialfile=default_name
+            initialfile=default_name,
+            filetypes=[("Все файлы", "*.*")]
         )
         if not output_file:
             return
@@ -418,7 +442,7 @@ class AsymmetricCryptoGUI:
                 input_file,
                 output_file,
                 json.dumps(key_data['parameters']),
-                progress_callback=self.update_progress  # Добавляем callback для прогресса
+                progress_callback=self.update_progress
             )
 
             # Завершаем прогресс
@@ -429,7 +453,6 @@ class AsymmetricCryptoGUI:
                 self.log_info(f"  Выходной файл: {os.path.basename(output_file)}")
                 self.log_info(
                     f"  Размер: {self.format_size(result['input_size'])} → {self.format_size(result['output_size'])}")
-                self.log_info(f"  Seed: {result.get('seed_hex', 'N/A')}")
 
                 self.progress_label.config(text="Готово!", fg="green")
                 self.status_label.config(text=f"Файл дешифрован: {os.path.basename(output_file)}", fg="green")

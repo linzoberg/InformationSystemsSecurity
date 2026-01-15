@@ -1,6 +1,7 @@
 import random
 from big_number_utils import mod_exp, mod_inverse, get_random_coprime, is_coprime
 
+
 class ElGamal:
     """Реализация криптосистемы Эль-Гамаля."""
 
@@ -12,10 +13,10 @@ class ElGamal:
             prime_bits: Длина простого числа p в битах.
         """
         self.prime_bits = prime_bits
-        self.p = None          # Большое простое число
-        self.g = None          # Первообразный корень по модулю p
-        self.x = None          # Закрытый ключ (1 < x < p-1)
-        self.y = None          # Открытый ключ (y = g^x mod p)
+        self.p = None  # Большое простое число
+        self.g = None  # Первообразный корень по модулю p
+        self.x = None  # Закрытый ключ (1 < x < p-1)
+        self.y = None  # Открытый ключ (y = g^x mod p)
 
     def generate_keys(self):
         """Генерация пары ключей (открытый и закрытый)."""
@@ -130,15 +131,43 @@ class ElGamal:
         Разбивает данные на блоки, соответствующие числам < p.
         """
         p, _, _ = public_key
-        max_block_size = (p.bit_length() - 1) // 8  # Байт в блоке
+
+        # Вычисляем максимальный размер блока в байтах
+        # Чтобы число было меньше p, используем (битовая_длина(p) - 1) / 8
+        max_block_size = (p.bit_length() - 1) // 8
+
+        # Гарантируем хотя бы 1 байт для маленьких p
+        if max_block_size < 1:
+            max_block_size = 1
+
+        # Дополнительная проверка: если 2^(8*max_block_size) >= p, уменьшаем размер блока
+        while (1 << (8 * max_block_size)) >= p and max_block_size > 1:
+            max_block_size -= 1
 
         encrypted_blocks = []
         for i in range(0, len(data), max_block_size):
             block = data[i:i + max_block_size]
             # Преобразуем блок байт в число
             m = int.from_bytes(block, byteorder='big')
+
+            # Проверяем, что число меньше p
+            if m >= p:
+                # Если число слишком большое, уменьшаем размер блока для этого конкретного случая
+                # Это может произойти для последнего блока, который может быть меньше max_block_size
+                # но все равно дать большое число
+                for reduced_size in range(max_block_size - 1, 0, -1):
+                    if reduced_size <= len(block):
+                        reduced_block = block[:reduced_size]
+                        m = int.from_bytes(reduced_block, byteorder='big')
+                        if m < p:
+                            break
+                if m >= p:
+                    # Если все еще слишком большое, берем только 1 байт
+                    m = block[0] if block else 0
+
             # Шифруем
             a, b = self.encrypt(m, public_key)
+
             # Кодируем a и b в байты фиксированной длины
             int_size = (p.bit_length() + 7) // 8  # Байт для хранения числа < p
             encrypted_blocks.append(a.to_bytes(int_size, 'big'))
@@ -160,13 +189,20 @@ class ElGamal:
         for i in range(0, len(data), 2 * int_size):
             a = int.from_bytes(data[i:i + int_size], 'big')
             b = int.from_bytes(data[i + int_size:i + 2 * int_size], 'big')
+
             # Дешифруем
             m = self.decrypt((a, b), private_key)
-            # Преобразуем число обратно в байты
+
+            # Вычисляем максимальный размер блока в байтах для этого p
             max_block_size = (p.bit_length() - 1) // 8
+            if max_block_size < 1:
+                max_block_size = 1
+
+            # Преобразуем число обратно в байты
             decrypted_blocks.append(m.to_bytes(max_block_size, 'big'))
 
         return b''.join(decrypted_blocks)
+
 
 # Тестирование модуля
 if __name__ == "__main__":

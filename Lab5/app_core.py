@@ -8,7 +8,7 @@ class AsymmetricCryptoApp:
 
     def __init__(self, prime_bits: int = 32):
         self.prime_bits = prime_bits
-        self.elgamal = ElGamal(prime_bits)
+        self.elgamal = None  # Будет создан при генерации ключей
         self.public_key = None
         self.private_key = None
         self.keys_generated = False
@@ -16,8 +16,9 @@ class AsymmetricCryptoApp:
     def generate_key_pair(self) -> Dict[str, Any]:
         """Генерация пары ключей."""
         try:
-            self.public_key = self.elgamal.generate_keys()[0]
-            self.private_key = self.elgamal.get_private_key()
+            # Создаем объект ElGamal и генерируем ключи
+            self.elgamal = ElGamal(prime_bits=self.prime_bits)
+            self.public_key, self.private_key = self.elgamal.generate_keys()
             self.keys_generated = True
 
             return {
@@ -32,13 +33,13 @@ class AsymmetricCryptoApp:
                     'p': hex(self.private_key[0]),
                     'x': hex(self.private_key[1])
                 },
-                'message': f'Ключи сгенерированы'
+                'message': 'Ключи сгенерированы'
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
     def encrypt_file(self, input_path: str, output_path: str,
-                     public_key_json: str = None, progress_callback=None) -> Dict[str, Any]:
+                    public_key_json: str = None, progress_callback=None) -> Dict[str, Any]:
         """Шифрование файла открытым ключом."""
         try:
             if not os.path.exists(input_path):
@@ -48,10 +49,14 @@ class AsymmetricCryptoApp:
             if public_key_json:
                 key_data = json.loads(public_key_json)
                 public_key = (int(key_data['p'], 16), key_data['g'], int(key_data['y'], 16))
-            elif self.public_key:
-                public_key = self.public_key
             else:
                 return {'success': False, 'error': 'Не указан открытый ключ'}
+
+            # Создаем временный объект ElGamal для шифрования
+            temp_elgamal = ElGamal(prime_bits=public_key[0].bit_length())
+            temp_elgamal.p = public_key[0]
+            temp_elgamal.g = public_key[1]
+            temp_elgamal.y = public_key[2]
 
             # Читаем файл
             with open(input_path, 'rb') as f:
@@ -62,7 +67,7 @@ class AsymmetricCryptoApp:
                 progress_callback(25)
 
             # Шифруем
-            ciphertext = self.elgamal.encrypt_bytes(plaintext, public_key)
+            ciphertext = temp_elgamal.encrypt_bytes(plaintext, public_key)
 
             # Обновляем прогресс (75%)
             if progress_callback:
@@ -82,9 +87,6 @@ class AsymmetricCryptoApp:
                 'output_size': len(ciphertext),
                 'input_path': input_path,
                 'output_path': output_path,
-                'hash_type': 'N/A',
-                'seed': self.seed,
-                'seed_hex': f"0x{self.seed:08x}",
                 'message': f'Файл успешно зашифрован. Размер: {len(plaintext)} байт'
             }
 
@@ -92,7 +94,7 @@ class AsymmetricCryptoApp:
             return {'success': False, 'error': f'Ошибка при шифровании: {str(e)}'}
 
     def decrypt_file(self, input_path: str, output_path: str,
-                     private_key_json: str = None, progress_callback=None) -> Dict[str, Any]:
+                    private_key_json: str = None, progress_callback=None) -> Dict[str, Any]:
         """Дешифрование файла закрытым ключом."""
         try:
             if not os.path.exists(input_path):
@@ -102,10 +104,13 @@ class AsymmetricCryptoApp:
             if private_key_json:
                 key_data = json.loads(private_key_json)
                 private_key = (int(key_data['p'], 16), int(key_data['x'], 16))
-            elif self.private_key:
-                private_key = self.private_key
             else:
                 return {'success': False, 'error': 'Не указан закрытый ключ'}
+
+            # Создаем временный объект ElGamal для дешифрования
+            temp_elgamal = ElGamal(prime_bits=private_key[0].bit_length())
+            temp_elgamal.p = private_key[0]
+            temp_elgamal.x = private_key[1]
 
             # Читаем зашифрованный файл
             with open(input_path, 'rb') as f:
@@ -116,7 +121,7 @@ class AsymmetricCryptoApp:
                 progress_callback(25)
 
             # Дешифруем
-            plaintext = self.elgamal.decrypt_bytes(ciphertext, private_key)
+            plaintext = temp_elgamal.decrypt_bytes(ciphertext, private_key)
 
             # Обновляем прогресс (75%)
             if progress_callback:
@@ -136,9 +141,6 @@ class AsymmetricCryptoApp:
                 'output_size': len(plaintext),
                 'input_path': input_path,
                 'output_path': output_path,
-                'hash_type': 'N/A',
-                'seed': self.seed,
-                'seed_hex': f"0x{self.seed:08x}",
                 'message': f'Файл успешно дешифрован. Размер: {len(plaintext)} байт'
             }
 

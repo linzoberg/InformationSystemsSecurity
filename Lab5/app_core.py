@@ -32,13 +32,13 @@ class AsymmetricCryptoApp:
                     'p': hex(self.private_key[0]),
                     'x': hex(self.private_key[1])
                 },
-                'message': f'Ключи сгенерированы (p: {self.public_key[0].bit_length()} бит)'
+                'message': f'Ключи сгенерированы'
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
     def encrypt_file(self, input_path: str, output_path: str,
-                    public_key_json: str = None) -> Dict[str, Any]:
+                     public_key_json: str = None, progress_callback=None) -> Dict[str, Any]:
         """Шифрование файла открытым ключом."""
         try:
             if not os.path.exists(input_path):
@@ -57,12 +57,24 @@ class AsymmetricCryptoApp:
             with open(input_path, 'rb') as f:
                 plaintext = f.read()
 
+            # Обновляем прогресс (25%)
+            if progress_callback:
+                progress_callback(25)
+
             # Шифруем
             ciphertext = self.elgamal.encrypt_bytes(plaintext, public_key)
+
+            # Обновляем прогресс (75%)
+            if progress_callback:
+                progress_callback(75)
 
             # Сохраняем
             with open(output_path, 'wb') as f:
                 f.write(ciphertext)
+
+            # Обновляем прогресс (100%)
+            if progress_callback:
+                progress_callback(100)
 
             return {
                 'success': True,
@@ -70,14 +82,17 @@ class AsymmetricCryptoApp:
                 'output_size': len(ciphertext),
                 'input_path': input_path,
                 'output_path': output_path,
-                'message': f'Файл зашифрован. Размер: {len(plaintext)} → {len(ciphertext)} байт'
+                'hash_type': 'N/A',
+                'seed': self.seed,
+                'seed_hex': f"0x{self.seed:08x}",
+                'message': f'Файл успешно зашифрован. Размер: {len(plaintext)} байт'
             }
 
         except Exception as e:
-            return {'success': False, 'error': f'Ошибка шифрования: {str(e)}'}
+            return {'success': False, 'error': f'Ошибка при шифровании: {str(e)}'}
 
     def decrypt_file(self, input_path: str, output_path: str,
-                    private_key_json: str = None) -> Dict[str, Any]:
+                     private_key_json: str = None, progress_callback=None) -> Dict[str, Any]:
         """Дешифрование файла закрытым ключом."""
         try:
             if not os.path.exists(input_path):
@@ -96,12 +111,24 @@ class AsymmetricCryptoApp:
             with open(input_path, 'rb') as f:
                 ciphertext = f.read()
 
+            # Обновляем прогресс (25%)
+            if progress_callback:
+                progress_callback(25)
+
             # Дешифруем
             plaintext = self.elgamal.decrypt_bytes(ciphertext, private_key)
+
+            # Обновляем прогресс (75%)
+            if progress_callback:
+                progress_callback(75)
 
             # Сохраняем
             with open(output_path, 'wb') as f:
                 f.write(plaintext)
+
+            # Обновляем прогресс (100%)
+            if progress_callback:
+                progress_callback(100)
 
             return {
                 'success': True,
@@ -109,11 +136,14 @@ class AsymmetricCryptoApp:
                 'output_size': len(plaintext),
                 'input_path': input_path,
                 'output_path': output_path,
-                'message': f'Файл дешифрован. Размер: {len(ciphertext)} → {len(plaintext)} байт'
+                'hash_type': 'N/A',
+                'seed': self.seed,
+                'seed_hex': f"0x{self.seed:08x}",
+                'message': f'Файл успешно дешифрован. Размер: {len(plaintext)} байт'
             }
 
         except Exception as e:
-            return {'success': False, 'error': f'Ошибка дешифрования: {str(e)}'}
+            return {'success': False, 'error': f'Ошибка при дешифровании: {str(e)}'}
 
     def save_key_to_file(self, key_data: Dict[str, Any], file_path: str) -> bool:
         """Сохранение ключа в JSON файл."""

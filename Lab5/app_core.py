@@ -3,18 +3,19 @@ import json
 from typing import Dict, Any, Optional
 from elgamal import ElGamal
 
-class AsymmetricCryptoApp:
-    """Ядро приложения для асимметричного шифрования."""
 
-    def __init__(self, prime_bits: int = 32):
+class AsymmetricCryptoApp:
+    """Ядро приложения для асимметричного шифрования с 128-битными ключами."""
+
+    def __init__(self, prime_bits: int = 128):
         self.prime_bits = prime_bits
-        self.elgamal = None  # Будет создан при генерации ключей
+        self.elgamal = None
         self.public_key = None
         self.private_key = None
         self.keys_generated = False
 
     def generate_key_pair(self) -> Dict[str, Any]:
-        """Генерация пары ключей."""
+        """Генерация пары ключей (128 бит)."""
         try:
             # Создаем объект ElGamal и генерируем ключи
             self.elgamal = ElGamal(prime_bits=self.prime_bits)
@@ -33,13 +34,13 @@ class AsymmetricCryptoApp:
                     'p': hex(self.private_key[0]),
                     'x': hex(self.private_key[1])
                 },
-                'message': 'Ключи сгенерированы'
+                'message': f'Ключи сгенерированы ({self.prime_bits} бит)'
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
     def encrypt_file(self, input_path: str, output_path: str,
-                    public_key_json: str = None, progress_callback=None) -> Dict[str, Any]:
+                     public_key_json: str = None, progress_callback=None) -> Dict[str, Any]:
         """Шифрование файла открытым ключом."""
         try:
             if not os.path.exists(input_path):
@@ -52,32 +53,35 @@ class AsymmetricCryptoApp:
             else:
                 return {'success': False, 'error': 'Не указан открытый ключ'}
 
-            # Создаем временный объект ElGamal для шифрования
-            temp_elgamal = ElGamal(prime_bits=public_key[0].bit_length())
-            temp_elgamal.p = public_key[0]
-            temp_elgamal.g = public_key[1]
-            temp_elgamal.y = public_key[2]
+            if progress_callback:
+                progress_callback(10)
 
             # Читаем файл
             with open(input_path, 'rb') as f:
                 plaintext = f.read()
 
-            # Обновляем прогресс (25%)
             if progress_callback:
-                progress_callback(25)
+                progress_callback(30)
+
+            # Создаем временный объект ElGamal для шифрования
+            temp_elgamal = ElGamal(prime_bits=128)
+            temp_elgamal.p = public_key[0]
+            temp_elgamal.g = public_key[1]
+            temp_elgamal.y = public_key[2]
+
+            if progress_callback:
+                progress_callback(50)
 
             # Шифруем
             ciphertext = temp_elgamal.encrypt_bytes(plaintext, public_key)
 
-            # Обновляем прогресс (75%)
             if progress_callback:
-                progress_callback(75)
+                progress_callback(80)
 
             # Сохраняем
             with open(output_path, 'wb') as f:
                 f.write(ciphertext)
 
-            # Обновляем прогресс (100%)
             if progress_callback:
                 progress_callback(100)
 
@@ -87,14 +91,15 @@ class AsymmetricCryptoApp:
                 'output_size': len(ciphertext),
                 'input_path': input_path,
                 'output_path': output_path,
-                'message': f'Файл успешно зашифрован. Размер: {len(plaintext)} байт'
+                'compression_ratio': len(ciphertext) / len(plaintext) if len(plaintext) > 0 else 0,
+                'message': f'Файл успешно зашифрован. Размер: {len(plaintext)} → {len(ciphertext)} байт'
             }
 
         except Exception as e:
             return {'success': False, 'error': f'Ошибка при шифровании: {str(e)}'}
 
     def decrypt_file(self, input_path: str, output_path: str,
-                    private_key_json: str = None, progress_callback=None) -> Dict[str, Any]:
+                     private_key_json: str = None, progress_callback=None) -> Dict[str, Any]:
         """Дешифрование файла закрытым ключом."""
         try:
             if not os.path.exists(input_path):
@@ -107,31 +112,34 @@ class AsymmetricCryptoApp:
             else:
                 return {'success': False, 'error': 'Не указан закрытый ключ'}
 
+            if progress_callback:
+                progress_callback(10)
+
             # Создаем временный объект ElGamal для дешифрования
-            temp_elgamal = ElGamal(prime_bits=private_key[0].bit_length())
+            temp_elgamal = ElGamal(prime_bits=128)
             temp_elgamal.p = private_key[0]
             temp_elgamal.x = private_key[1]
+
+            if progress_callback:
+                progress_callback(30)
 
             # Читаем зашифрованный файл
             with open(input_path, 'rb') as f:
                 ciphertext = f.read()
 
-            # Обновляем прогресс (25%)
             if progress_callback:
-                progress_callback(25)
+                progress_callback(50)
 
             # Дешифруем
             plaintext = temp_elgamal.decrypt_bytes(ciphertext, private_key)
 
-            # Обновляем прогресс (75%)
             if progress_callback:
-                progress_callback(75)
+                progress_callback(80)
 
             # Сохраняем
             with open(output_path, 'wb') as f:
                 f.write(plaintext)
 
-            # Обновляем прогресс (100%)
             if progress_callback:
                 progress_callback(100)
 
@@ -141,7 +149,7 @@ class AsymmetricCryptoApp:
                 'output_size': len(plaintext),
                 'input_path': input_path,
                 'output_path': output_path,
-                'message': f'Файл успешно дешифрован. Размер: {len(plaintext)} байт'
+                'message': f'Файл успешно дешифрован. Размер: {len(ciphertext)} → {len(plaintext)} байт'
             }
 
         except Exception as e:
@@ -171,6 +179,7 @@ class AsymmetricCryptoApp:
 
         return {
             'has_keys': True,
+            'key_bits': 128,
             'public_key': {
                 'p': f'{self.public_key[0]:#x}',
                 'g': self.public_key[1],
